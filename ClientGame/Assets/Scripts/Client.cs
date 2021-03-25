@@ -7,6 +7,7 @@ using System;
 public class Client : MonoBehaviour
 {
     private ClientThread ct;
+    public Data data;
     
     public GameObject player;
     public GameObject bulletPrefab;  //¤l¼uPrefab
@@ -24,19 +25,21 @@ public class Client : MonoBehaviour
 
         player.transform.position = new Vector2(2, 0);
         player.transform.rotation = Quaternion.Euler(0, 0, 0);
-
+        
     }
 
     private void FixedUpdate()
     {
         if (isMove)
         {
-            float lerpx = Mathf.Lerp(player.transform.position.x, float.Parse(sArray[0]), 0.05f);
-            float lerpy = Mathf.Lerp(player.transform.position.y, float.Parse(sArray[1]), 0.05f);
+            /*float lerpx = Mathf.Lerp(player.transform.position.x, float.Parse(sArray[0]), 0.5f);
+            float lerpy = Mathf.Lerp(player.transform.position.y, float.Parse(sArray[1]), 0.5f);
             float lerpangle = Mathf.LerpAngle(player.transform.rotation.eulerAngles.z, float.Parse(sArray[2]), 0.1f);
 
             player.transform.position = new Vector2(lerpx, lerpy);
-            player.transform.rotation = Quaternion.Euler(0, 0, lerpangle);
+            player.transform.rotation = Quaternion.Euler(0, 0, lerpangle);*/
+            player.transform.position = new Vector2(float.Parse(sArray[0]), float.Parse(sArray[1]));
+            player.transform.rotation = Quaternion.Euler(0, 0, float.Parse(sArray[2]));
             isMove = false;
         }
     }
@@ -47,7 +50,7 @@ public class Client : MonoBehaviour
 
         if (ct.receiveMessage != null)
         {
-            Debug.Log("Server:" + ct.receiveMessage);
+            //Debug.Log("Server:" + ct.receiveMessage);
             sArray = ct.receiveMessage.Split(new string[] { ". ", " " }, StringSplitOptions.RemoveEmptyEntries);
 
             isMove = true;
@@ -57,9 +60,14 @@ public class Client : MonoBehaviour
 
         if (isSpawn)
             StartCoroutine(SpawnCoroutine());
-        WriteMessage();
+        //WriteMessage();
         
-        ct.Send(msg);
+        //ct.Send(msg);
+
+        TestMessage();
+        var json = JsonUtility.ToJson(data);
+        Debug.Log(json);
+        ct.Send(json);
     }
 
     private void WriteMessage()
@@ -92,6 +100,34 @@ public class Client : MonoBehaviour
         msg += ' ';
     }
 
+    private void TestMessage()
+    {
+        data.id = 0;
+        data.horizontal = Input.GetAxis("Horizontal");
+        data.vertical = Input.GetAxis("Vertical");
+        
+        if (Input.GetKey(KeyCode.LeftArrow))
+        {
+            data.presskey = "LeftArrow";
+        }
+        else if (Input.GetKey(KeyCode.RightArrow))
+        {
+            data.presskey = "RightArrow";
+        }
+        else if (Input.GetKey(KeyCode.UpArrow))
+        {
+            data.presskey = "UpArrow";
+        }
+        else if (Input.GetKey(KeyCode.DownArrow))
+        {
+            data.presskey = "DownArrow";
+        }
+        else data.presskey = "None";
+        
+        data.spawning = Spawning;
+        Spawning = false;
+    }
+
     IEnumerator SpawnCoroutine()
     {
         isSpawn = false;
@@ -100,6 +136,11 @@ public class Client : MonoBehaviour
         Spawning = true;
         isSpawn = true;
     }
+
+    /*private void Serialize()
+    {
+        var json = JsonUtility.ToJson(data);
+    }*/
 
     private void OnApplicationQuit()
     {

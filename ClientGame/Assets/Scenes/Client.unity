@@ -1237,6 +1237,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c121f8a37df6bd47983114d231a1cc9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  data:
+    id: -1
+    horizontal: 0
+    vertical: 0
+    presskey: abc
+    spawning: 0
   player: {fileID: 1556200193}
   bulletPrefab: {fileID: 7083753151215392635, guid: 90442c43a611759448284c615b7816dd, type: 3}
   interval: 3
@@ -5789,7 +5795,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1556200193}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 47150762a649b714d8a510e318fec0e8, type: 3}
   m_Name: 
