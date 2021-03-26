@@ -2,16 +2,31 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-[System.Serializable]
-public class Data
+public class ServerData
 {
-    public int id;
-    public float horizontal;
-    public float vertical;
-    public string presskey;
-    public bool spawning;
+    public int id { get; set; }
+    public float position_x { get; set; }
+    public float position_y { get; set; }
+    public float z_angle { get; set; }
 
-    Data()
+    public ServerData()
+    {
+        id = -1;
+        position_x = 0;
+        position_y = 0;
+        z_angle = 0;
+    }
+}
+
+public class ClientData
+{
+    public int id { get; set; }
+    public float horizontal { get; set; }
+    public float vertical { get; set; }
+    public string presskey { get; set; }
+    public bool spawning { get; set; }
+
+    public ClientData()
     {
         id = -1;
         horizontal = 0;

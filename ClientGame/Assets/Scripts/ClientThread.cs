@@ -81,7 +81,7 @@ class ClientThread
         {
             if (clientSocket.Connected == true)
             {
-                clientSocket.Send(Encoding.ASCII.GetBytes(sendMessage));
+                clientSocket.Send(Encoding.UTF8.GetBytes(sendMessage));
             }
         }
         catch (Exception)
@@ -94,12 +94,10 @@ class ClientThread
     {
         if (clientSocket.Connected == true)
         {
-            byte[] bytes = new byte[1024];
+            byte[] bytes = new byte[1024 * 4];
             long dataLength = clientSocket.Receive(bytes);
 
-
-
-            receiveMessage = Encoding.ASCII.GetString(bytes);
+            receiveMessage = Encoding.UTF8.GetString(bytes);
         }
     }
 }

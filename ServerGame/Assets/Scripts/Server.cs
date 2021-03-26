@@ -1,12 +1,13 @@
 using UnityEngine;
 using System;
 using System.Net.Sockets;
-using System.Collections;
+using System.Text.Json;
 
 public class Server : MonoBehaviour
 {
     private ServerThread st;
-    public Data data;
+    public ServerData Sdata = new ServerData();
+    public ClientData Cdata = new ClientData();
     //private bool isSend;//儲存是否發送訊息完畢
 
     public GameObject basicplayer;
@@ -42,6 +43,10 @@ public class Server : MonoBehaviour
     {
         if (isMove)
         {
+            //移動的距離
+            movementx = Cdata.horizontal * movementSpeed * Time.deltaTime;
+            movementy = Cdata.vertical * movementSpeed * Time.deltaTime;
+
             //更新座標
             player.transform.position = new Vector2(Mathf.Clamp(player.transform.position.x + movementx, minPosX, maxPosX), Mathf.Clamp(player.transform.position.y + movementy, minPosY, maxPosY));
             isMove = false;
@@ -51,72 +56,66 @@ public class Server : MonoBehaviour
     private void Update()
     {
         st.Receive();
+
         if (st.receiveMessage != null)
         {
-            Debug.Log("Client:" + st.receiveMessage);
+            //Debug.Log("Client:" + st.receiveMessage);
             string[] sArray = st.receiveMessage.Split(new string[] { "{", "}" }, StringSplitOptions.RemoveEmptyEntries);
-            string datastr = "{" + sArray[0] + "}";
-            data = JsonUtility.FromJson<Data>(datastr);
+            foreach (string tempstr in sArray)
+            {
+                if (tempstr[0] != '\"') continue;
+                
+                string datastr = "{" + tempstr + "}";
+                Debug.Log(datastr);
+                Cdata = JsonSerializer.Deserialize<ClientData>(datastr);
 
-            //移動的距離
-            movementx = data.horizontal * movementSpeed * Time.deltaTime;
-            movementy = data.vertical * movementSpeed * Time.deltaTime;
-            isMove = true;
+                isMove = true;
 
-            float theta = player.transform.rotation.eulerAngles.z;
-            if (data.presskey == "LeftArrow")
-            {
-                if (theta > 180) theta -= 360;
-                if (theta + 90 >= 0) player.transform.Rotate(0, 0, (90 - theta) / 5);
-                else player.transform.Rotate(0, 0, (-270 - theta) / 5);
-            }
-            else if (data.presskey == "RightArrow")
-            {
-                if (270 - player.transform.rotation.eulerAngles.z <= 180) player.transform.Rotate(0, 0, (270 - player.transform.rotation.eulerAngles.z) / 5);
-                else player.transform.Rotate(0, 0, (-90 - player.transform.rotation.eulerAngles.z) / 5);
-            }
-            else if (data.presskey == "UpArrow")
-            {
-                if (360 - player.transform.rotation.eulerAngles.z <= 180) player.transform.Rotate(0, 0, (360 - player.transform.rotation.eulerAngles.z) / 5);
-                else player.transform.Rotate(0, 0, (0 - player.transform.rotation.eulerAngles.z) / 5);
-            }
-            else if (data.presskey == "DownArrow")
-            {
-                if (180 - player.transform.rotation.eulerAngles.z <= 180) player.transform.Rotate(0, 0, (180 - player.transform.rotation.eulerAngles.z) / 5);
-                else player.transform.Rotate(0, 0, (-180 - player.transform.rotation.eulerAngles.z) / 5);
-            }
-            else player.transform.Rotate(0, 0, 0);
+                float z_angle = player.transform.rotation.eulerAngles.z;
+                if (Cdata.presskey == "LeftArrow")
+                {
+                    if (z_angle > 180) z_angle -= 360;
+                    if (z_angle + 90 >= 0) player.transform.Rotate(0, 0, (90 - z_angle) / 5);
+                    else player.transform.Rotate(0, 0, (-270 - z_angle) / 5);
+                }
+                else if (Cdata.presskey == "RightArrow")
+                {
+                    if (270 - z_angle <= 180) player.transform.Rotate(0, 0, (270 - z_angle) / 5);
+                    else player.transform.Rotate(0, 0, (-90 - z_angle) / 5);
+                }
+                else if (Cdata.presskey == "UpArrow")
+                {
+                    if (360 - z_angle <= 180) player.transform.Rotate(0, 0, (360 - z_angle) / 5);
+                    else player.transform.Rotate(0, 0, (0 - z_angle) / 5);
+                }
+                else if (Cdata.presskey == "DownArrow")
+                {
+                    if (180 - z_angle <= 180) player.transform.Rotate(0, 0, (180 - z_angle) / 5);
+                    else player.transform.Rotate(0, 0, (-180 - z_angle) / 5);
+                }
+                else player.transform.Rotate(0, 0, 0);
 
-            if (data.spawning)
-            {
-                Instantiate(bulletPrefab, new Vector2(player.transform.position.x - 0.55f * Mathf.Sin(player.transform.rotation.eulerAngles.z / 180 * Mathf.PI), player.transform.position.y + 0.55f * Mathf.Cos(player.transform.rotation.eulerAngles.z / 180 * Mathf.PI)), player.transform.rotation);
+                if (Cdata.spawning)
+                {
+                    Instantiate(bulletPrefab, new Vector2(player.transform.position.x - 0.55f * Mathf.Sin(z_angle / 180 * Mathf.PI), player.transform.position.y + 0.55f * Mathf.Cos(z_angle / 180 * Mathf.PI)), player.transform.rotation);
+                }
             }
 
             st.receiveMessage = null;
         }
 
-        string[] str = new string[20];
-        str[0] = Convert.ToString(player.transform.position.x);
-        str[1] = Convert.ToString(player.transform.position.y);
-        str[2] = Convert.ToString(player.transform.rotation.eulerAngles.z);
-        /*int counter = 3;
-        GameObject[] bulletArray = GameObject.FindGameObjectsWithTag("stuff");
-        for (int i = 0; i < bulletArray.Length; i += 1)
-        {
-            str[counter++] = Convert.ToString(bulletArray[i].transform.position.x);
-            str[counter++] = Convert.ToString(bulletArray[i].transform.position.y);
-            str[counter++] = Convert.ToString(bulletArray[i].transform.rotation.eulerAngles.z);
-        }*/
-        string allstr = "";
-        for (int i = 0; i < 20; i += 1)
-        {
-            allstr += str[i];
-            allstr += " ";
-        }
+        WriteMessage();
+        var json = JsonSerializer.Serialize<ServerData>(Sdata);
+        //Debug.Log(json);
+        st.Send(json);
+    }
 
-        //Debug.Log(allstr);
-        st.Send(allstr);
-
+    private void WriteMessage()
+    {
+        Sdata.id = 0;
+        Sdata.position_x = player.transform.position.x;
+        Sdata.position_y = player.transform.position.y;
+        Sdata.z_angle = player.transform.rotation.eulerAngles.z;
     }
 
     private void OnApplicationQuit()//應用程式結束時自動關閉連線

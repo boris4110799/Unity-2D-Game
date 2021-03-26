@@ -18,8 +18,8 @@ class ServerThread
     private Struct_Internet internet;//宣告結構物件
     public string receiveMessage;
     private string sendMessage;
-    private Thread threadConnect;//連線的Thread
-    private Thread threadReceive;//接收資料的Thread
+    private Thread threadConnect = null;//連線的Thread
+    private Thread threadReceive = null;//接收資料的Thread
 
     public ServerThread(AddressFamily family, SocketType socketType, ProtocolType protocolType, string ip, int port)
     {
@@ -101,7 +101,7 @@ class ServerThread
             if (clientSocket.Connected == true)//若成功連線才傳遞資料
             {
                 //將資料進行編碼並轉為Byte後傳遞
-                clientSocket.Send(Encoding.ASCII.GetBytes(sendMessage));
+                clientSocket.Send(Encoding.UTF8.GetBytes(sendMessage));
             }
         }
         catch (Exception)
@@ -114,10 +114,17 @@ class ServerThread
     {
         if (clientSocket.Connected == true)
         {
-            byte[] bytes = new byte[1024];//用來儲存傳遞過來的資料
-            long dataLength = clientSocket.Receive(bytes);//資料接收完畢之前都會停在這邊
-                                                          //dataLength為傳遞過來的"資料長度"
-            receiveMessage = Encoding.ASCII.GetString(bytes);//將傳過來的資料解碼並儲存
+            byte[] bytes = new byte[1024 * 4];//用來儲存傳遞過來的資料
+            try
+            {
+                long dataLength = clientSocket.Receive(bytes);//資料接收完畢之前都會停在這邊
+                                                              //dataLength為傳遞過來的"資料長度"
+                receiveMessage = Encoding.UTF8.GetString(bytes);//將傳過來的資料解碼並儲存
+            }
+            catch
+            {
+                throw new NullReferenceException("message為Null");
+            }
         }
     }
 }

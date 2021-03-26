@@ -1,22 +1,21 @@
 using UnityEngine;
 using System.Collections;
 using System.Net.Sockets;
-using System.Text;
 using System;
+using System.Text.Json;
 
 public class Client : MonoBehaviour
 {
     private ClientThread ct;
-    public Data data;
-    
+    public ServerData Sdata = new ServerData();
+    public ClientData Cdata = new ClientData();
+
     public GameObject player;
     public GameObject bulletPrefab;  //子彈Prefab
     public float interval;  //兩發子彈之間的時間
     private bool isMove = false;
     private bool Spawning = false;
     private bool isSpawn = true;
-    string[] sArray;
-    string msg = null;
 
     private void Start()
     {
@@ -32,14 +31,14 @@ public class Client : MonoBehaviour
     {
         if (isMove)
         {
-            /*float lerpx = Mathf.Lerp(player.transform.position.x, float.Parse(sArray[0]), 0.5f);
-            float lerpy = Mathf.Lerp(player.transform.position.y, float.Parse(sArray[1]), 0.5f);
-            float lerpangle = Mathf.LerpAngle(player.transform.rotation.eulerAngles.z, float.Parse(sArray[2]), 0.1f);
+            float lerpx = Mathf.Lerp(player.transform.position.x, Sdata.position_x, 0.2f);
+            float lerpy = Mathf.Lerp(player.transform.position.y, Sdata.position_y, 0.2f);
+            float lerpangle = Mathf.LerpAngle(player.transform.rotation.eulerAngles.z, Sdata.z_angle, 0.5f);
 
             player.transform.position = new Vector2(lerpx, lerpy);
-            player.transform.rotation = Quaternion.Euler(0, 0, lerpangle);*/
-            player.transform.position = new Vector2(float.Parse(sArray[0]), float.Parse(sArray[1]));
-            player.transform.rotation = Quaternion.Euler(0, 0, float.Parse(sArray[2]));
+            player.transform.rotation = Quaternion.Euler(0, 0, lerpangle);
+            //player.transform.position = new Vector2(Sdata.position_x, Sdata.position_y);
+            //player.transform.rotation = Quaternion.Euler(0, 0, Sdata.z_angle);
             isMove = false;
         }
     }
@@ -51,80 +50,54 @@ public class Client : MonoBehaviour
         if (ct.receiveMessage != null)
         {
             //Debug.Log("Server:" + ct.receiveMessage);
-            sArray = ct.receiveMessage.Split(new string[] { ". ", " " }, StringSplitOptions.RemoveEmptyEntries);
+            string[] sArray = ct.receiveMessage.Split(new string[] { "{", "}" }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (string tempstr in sArray)
+            {
+                if (tempstr[0] != '\"') continue;
+                
+                string datastr = "{" + tempstr + "}";
+                Debug.Log(datastr);
+                Sdata = JsonSerializer.Deserialize<ServerData>(datastr);
+                isMove = true;
+            }
 
-            isMove = true;
-            
             ct.receiveMessage = null;
         }
 
         if (isSpawn)
             StartCoroutine(SpawnCoroutine());
-        //WriteMessage();
         
-        //ct.Send(msg);
-
-        TestMessage();
-        var json = JsonUtility.ToJson(data);
-        Debug.Log(json);
+        WriteMessage();
+        var json = JsonSerializer.Serialize<ClientData>(Cdata);
+        //Debug.Log(json);
         ct.Send(json);
     }
 
     private void WriteMessage()
     {
-        msg = Convert.ToString(Input.GetAxis("Horizontal"));
-        msg += ' ';
-        msg += Convert.ToString(Input.GetAxis("Vertical"));
-        msg += ' ';
-
-        if (Input.GetKey(KeyCode.LeftArrow))
-        {
-            msg += "LeftArrow";
-        }
-        else if (Input.GetKey(KeyCode.RightArrow))
-        {
-            msg += "RightArrow";
-        }
-        else if (Input.GetKey(KeyCode.UpArrow))
-        {
-            msg += "UpArrow";
-        }
-        else if (Input.GetKey(KeyCode.DownArrow))
-        {
-            msg += "DownArrow";
-        }
-        else msg += "None";
-        msg += ' ';
-        msg += Convert.ToString(Spawning);
-        Spawning = false;
-        msg += ' ';
-    }
-
-    private void TestMessage()
-    {
-        data.id = 0;
-        data.horizontal = Input.GetAxis("Horizontal");
-        data.vertical = Input.GetAxis("Vertical");
+        Cdata.id = 0;
+        Cdata.horizontal = Input.GetAxis("Horizontal");
+        Cdata.vertical = Input.GetAxis("Vertical");
         
         if (Input.GetKey(KeyCode.LeftArrow))
         {
-            data.presskey = "LeftArrow";
+            Cdata.presskey = "LeftArrow";
         }
         else if (Input.GetKey(KeyCode.RightArrow))
         {
-            data.presskey = "RightArrow";
+            Cdata.presskey = "RightArrow";
         }
         else if (Input.GetKey(KeyCode.UpArrow))
         {
-            data.presskey = "UpArrow";
+            Cdata.presskey = "UpArrow";
         }
         else if (Input.GetKey(KeyCode.DownArrow))
         {
-            data.presskey = "DownArrow";
+            Cdata.presskey = "DownArrow";
         }
-        else data.presskey = "None";
+        else Cdata.presskey = "None";
         
-        data.spawning = Spawning;
+        Cdata.spawning = Spawning;
         Spawning = false;
     }
 
