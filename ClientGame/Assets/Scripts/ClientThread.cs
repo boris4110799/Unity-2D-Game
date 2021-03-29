@@ -15,7 +15,6 @@ class ClientThread
     private Socket clientSocket;//連線使用的Socket
     private Struct_Internet internet;
     public string receiveMessage;
-    private string sendMessage;
     private Thread threadReceive;
     private Thread threadConnect;
 
@@ -24,42 +23,19 @@ class ClientThread
         clientSocket = new Socket(family, socketType, protocolType);
         internet.ip = ip;
         internet.port = port;
-        receiveMessage = null;
-    }
 
-    public void StartConnect()
-    {
-        threadConnect = new Thread(Accept);
+        threadConnect = new Thread(Accept)
+        {
+            IsBackground = true
+        };
         threadConnect.Start();
-    }
 
-    public void StopConnect()
-    {
-        try
+        receiveMessage = null;
+
+        threadReceive = new Thread(Receive)
         {
-            clientSocket.Close();
-        }
-        catch (Exception)
-        {
-
-        }
-    }
-
-    public void Send(string message)
-    {
-        if (message == null)
-            throw new NullReferenceException("message不可為Null");
-        else
-            sendMessage = message;
-        SendMessage();
-    }
-
-    public void Receive()
-    {
-        if (threadReceive != null && threadReceive.IsAlive == true)
-            return;
-        threadReceive = new Thread(ReceiveMessage);
-        threadReceive.IsBackground = true;
+            IsBackground = true
+        };
         threadReceive.Start();
     }
 
@@ -71,34 +47,62 @@ class ClientThread
         }
         catch (Exception)
         {
-
         }
     }
 
-    private void SendMessage()
+    private void Receive()
+    {
+        long dataLength;
+        byte[] bytes = new byte[1024 * 4];
+
+        while (true)
+        {
+            if (clientSocket != null && clientSocket.Connected == true)
+            {
+                dataLength = clientSocket.Receive(bytes);
+                receiveMessage = Encoding.UTF8.GetString(bytes);
+            }
+        }
+    }
+
+    public void Send(string message)
+    {
+        if (message == null)
+        {
+            throw new NullReferenceException("message不可為Null");
+        }
+        else
+        {
+            try
+            {
+                if (clientSocket != null && clientSocket.Connected == true)
+                {
+                    clientSocket.Send(Encoding.UTF8.GetBytes(message));
+                }
+            }
+            catch (Exception)
+            {
+
+            }
+        }
+    }
+
+    public bool Connected()
+    {
+        if (clientSocket != null && clientSocket.Connected == true) return true;
+        else return false;
+    }
+
+    public void StopConnect()
     {
         try
         {
-            if (clientSocket.Connected == true)
-            {
-                clientSocket.Send(Encoding.UTF8.GetBytes(sendMessage));
-            }
+            clientSocket.Shutdown(SocketShutdown.Both);
+            clientSocket.Close();
         }
         catch (Exception)
         {
 
         }
     }
-
-    private void ReceiveMessage()
-    {
-        if (clientSocket.Connected == true)
-        {
-            byte[] bytes = new byte[1024 * 4];
-            long dataLength = clientSocket.Receive(bytes);
-
-            receiveMessage = Encoding.UTF8.GetString(bytes);
-        }
-    }
 }
-
