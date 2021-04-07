@@ -48,8 +48,6 @@ ScriptsOnlyBuild:
     - TMPro.TMP_Settings
     - TMPro.TMP_SpriteAsset
     - TMPro.TMP_StyleSheet
-    Unity.Timeline.Editor.dll:
-    - TimelineProjectSettings
     UnityEditor.TestRunner.dll:
     - UnityEditor.TestTools.TestRunner.Api.CallbacksHolder
     - UnityEditor.TestTools.TestRunner.TestListCacheData
@@ -302,12 +300,6 @@ ScriptsOnlyBuild:
     className: CinemachineCameraOffset
   - hash:
       serializedVersion: 2
-      Hash: 41e827311698d5317dafb33db9b3032e
-    assemblyName: Assembly-CSharp.dll
-    namespaceName: 
-    className: TextClick
-  - hash:
-      serializedVersion: 2
       Hash: 6225eb0973ab0af667bc5f9d1b1b18de
     assemblyName: Cinemachine.dll
     namespaceName: Cinemachine
@@ -338,7 +330,7 @@ ScriptsOnlyBuild:
     className: TMP_StyleSheet
   - hash:
       serializedVersion: 2
-      Hash: 45a168a80429b9d0a505cbac0b0ceda2
+      Hash: 87fd7b9fdb04ddb7efa9a291339af53e
     assemblyName: Assembly-CSharp.dll
     namespaceName: 
     className: Client

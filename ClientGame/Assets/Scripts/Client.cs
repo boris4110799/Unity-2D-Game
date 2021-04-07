@@ -1,10 +1,10 @@
 using UnityEngine;
-using System.Collections;
-using System.Net.Sockets;
-using System;
-using System.Text.Json;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using System;
+using System.Collections;
+using System.Net.Sockets;
+using System.Text.Json;
 using Cinemachine;
 
 public class Client : MonoBehaviour
@@ -16,10 +16,13 @@ public class Client : MonoBehaviour
     private GameObject myplayer;
     public GameObject basicplayer;
     public GameObject bulletPrefab;  //子彈Prefab
+    public GameObject hpbarPrefab;
+    private GameObject hpbar;
     public Text text;
 
     private GameObject player;
     private bool[] isplayercreate = new bool[10];
+    private bool[] isplayeralive = new bool[10];
     private bool connected = false;
 
     private int myid = -1;
@@ -27,6 +30,7 @@ public class Client : MonoBehaviour
     private bool[] isMove = new bool[10];
     private bool Spawning = false;
     private bool isSpawn = true;
+    private bool idrequest = false;
 
     private void Start()
     {
@@ -34,22 +38,23 @@ public class Client : MonoBehaviour
         myplayer = Instantiate(basicplayer, new Vector2(2, 0), Quaternion.identity) as GameObject;
         myplayer.name = "player" + Convert.ToString(0);
         GameObject.Find("CM vcam1").GetComponent<CinemachineVirtualCamera>().Follow = myplayer.transform;
-        //playerbullet = Instantiate(basicbullet, new Vector2(0,0), Quaternion.identity) as GameObject;
-        //systemplayer.GetComponent<BoxCollider2D>().isTrigger = true;
         basicplayer.SetActive(false);
 
+        hpbar = Instantiate(hpbarPrefab, new Vector2(myplayer.transform.position.x, myplayer.transform.position.y - 1.5f), Quaternion.identity) as GameObject;
+        hpbar.name = "hpbar" + Convert.ToString(0);
     }
 
     private void FixedUpdate()
     {
         if (connected)
         {
-            for (int i = 0; i < 10; i += 1)
+            for (int i = 1; i < 10; i += 1)
             {
-                if (Sdata[i] != null && isplayercreate[i] && isMove[i])
+                if (isMove[i])
                 {
                     string playername = "player" + Convert.ToString(i);
                     player = GameObject.Find(playername);
+                    
 
                     float lerpx = Mathf.Lerp(player.transform.position.x, Sdata[i].position_x, 0.2f);
                     float lerpy = Mathf.Lerp(player.transform.position.y, Sdata[i].position_y, 0.2f);
@@ -57,7 +62,8 @@ public class Client : MonoBehaviour
 
                     player.transform.position = new Vector2(lerpx, lerpy);
                     player.transform.rotation = Quaternion.Euler(0, 0, lerpangle);
-
+                    hpbar.transform.position = new Vector2(player.transform.position.x, player.transform.position.y - 1.5f);
+                    
                     isMove[i] = false;
                 }
             }
@@ -73,10 +79,13 @@ public class Client : MonoBehaviour
                 //Debug.Log("Server:" + ct.receiveMessage);
                 string[] sArray = ct.receiveMessage.Split(new string[] { "{", "}" }, StringSplitOptions.RemoveEmptyEntries);
                 myid = Convert.ToInt32(sArray[0]);
+                Debug.Log("myid:" + Convert.ToString(myid));
+                isplayercreate[myid] = true;
 
                 if (myid != -1)
                 {
                     myplayer.name = "player" + Convert.ToString(myid);
+                    hpbar.name = "hpbar" + Convert.ToString(myid);
                 }
 
                 for (int i = 1; i < sArray.Length; i += 1)
@@ -86,43 +95,52 @@ public class Client : MonoBehaviour
                     string datastr = "{" + sArray[i] + "}";
                     Debug.Log(datastr);
                     ServerData tempdata = JsonSerializer.Deserialize<ServerData>(datastr);
+                    Debug.Log("temp_id:" + Convert.ToString(tempdata.id));
+                    Sdata[tempdata.id] = tempdata;
 
-                    if (Sdata[tempdata.id] == null && isplayercreate[tempdata.id] == false)
+                    if (isplayercreate[tempdata.id] == false)
                     {
-                        Sdata[tempdata.id] = tempdata;
                         isplayercreate[tempdata.id] = true;
 
                         basicplayer.SetActive(true);
                         player = Instantiate(basicplayer, new Vector2(Sdata[tempdata.id].position_x, Sdata[tempdata.id].position_y), Quaternion.Euler(0, 0, Sdata[tempdata.id].z_angle)) as GameObject;
                         player.name = "player" + Convert.ToString(tempdata.id);
-                        //playerbullet = Instantiate(basicbullet, new Vector2(0,0), Quaternion.identity) as GameObject;
-                        //systemplayer.GetComponent<BoxCollider2D>().isTrigger = true;
                         basicplayer.SetActive(false);
                     }
 
+                    isplayeralive[tempdata.id] = true;
                     isMove[tempdata.id] = true;
 
-                    if (tempdata.spawning && tempdata.id != myid)
+                    if (tempdata.spawning)
                     {
                         string playername = "player" + Convert.ToString(tempdata.id);
                         player = GameObject.Find(playername);
                         Instantiate(bulletPrefab, new Vector2(player.transform.position.x - Mathf.Sin(player.transform.rotation.eulerAngles.z / 180 * Mathf.PI), player.transform.position.y + Mathf.Cos(player.transform.rotation.eulerAngles.z / 180 * Mathf.PI)), player.transform.rotation);
                     }
+
+                    string hpname = "hpbar" + Convert.ToString(i);
+                    GameObject bar = GameObject.Find(hpname).transform.GetChild(0).gameObject;
+                    bar.transform.localScale = new Vector3(Sdata[i].hp / 100f, bar.transform.localScale.y, bar.transform.localScale.z);
                 }
 
+                CheckPlayer();
                 ct.receiveMessage = null;
             }
 
             if (isSpawn)
                 StartCoroutine(SpawnCoroutine());
 
-            WriteMessage();
-            var json = JsonSerializer.Serialize(Cdata);
-            //Debug.Log(json);
-            ct.Send(json);
+            if (idrequest == false || myid != -1)
+            {
+                idrequest = true;
+                WriteMessage();
+                var json = JsonSerializer.Serialize(Cdata);
+                //Debug.Log(json);
+                ct.Send(json);
+            }
 
             //CreatePlayer();
-            CheckPlayer();
+            //CheckPlayer();
         }
     }
 
@@ -130,8 +148,6 @@ public class Client : MonoBehaviour
     {
         Keyboard keyboard = Keyboard.current;
         Cdata.id = myid;
-        Cdata.horizontal = keyboard.rightArrowKey.ReadValue() - keyboard.leftArrowKey.ReadValue();
-        Cdata.vertical = keyboard.upArrowKey.ReadValue() - keyboard.downArrowKey.ReadValue();
         
         if (keyboard.leftArrowKey.isPressed)
         {
@@ -159,7 +175,7 @@ public class Client : MonoBehaviour
     {
         isSpawn = false;
         yield return new WaitForSeconds(interval);  //等候下一發子彈的時間
-        Instantiate(bulletPrefab, new Vector2(myplayer.transform.position.x - Mathf.Sin(myplayer.transform.rotation.eulerAngles.z / 180 * Mathf.PI), myplayer.transform.position.y + Mathf.Cos(myplayer.transform.rotation.eulerAngles.z / 180 * Mathf.PI)), myplayer.transform.rotation);
+        //Instantiate(bulletPrefab, new Vector2(myplayer.transform.position.x - Mathf.Sin(myplayer.transform.rotation.eulerAngles.z / 180 * Mathf.PI), myplayer.transform.position.y + Mathf.Cos(myplayer.transform.rotation.eulerAngles.z / 180 * Mathf.PI)), myplayer.transform.rotation);
         Spawning = true;
         isSpawn = true;
     }
@@ -173,8 +189,6 @@ public class Client : MonoBehaviour
                 basicplayer.SetActive(true);
                 player = Instantiate(basicplayer, new Vector2(Sdata[i].position_x, Sdata[i].position_y), Quaternion.Euler(0,0,Sdata[i].z_angle)) as GameObject;
                 player.name = "player" + Convert.ToString(i);
-                //playerbullet = Instantiate(basicbullet, new Vector2(0,0), Quaternion.identity) as GameObject;
-                //systemplayer.GetComponent<BoxCollider2D>().isTrigger = true;
                 basicplayer.SetActive(false);
             }
         }
@@ -184,20 +198,26 @@ public class Client : MonoBehaviour
     {
         for (int i = 1; i < 10; i += 1)
         {
-            if (Sdata[i] != null && isplayercreate[i] == false)
+            if (Sdata[i] != null && isplayeralive[i] == false)
             {
-                string tempstr = "player" + Convert.ToString(i);
                 Sdata[i] = null;
+                isplayercreate[i] = false;
+
+                string tempstr = "player" + Convert.ToString(i);
+                Destroy(GameObject.Find(tempstr));
+                tempstr = "hpbar" + Convert.ToString(i);
                 Destroy(GameObject.Find(tempstr));
             }
+
+            isplayeralive[i] = false;
         }
     }
 
     public void CheckInput(string str)
     {
-        ct = new ClientThread(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp, str, 8000);
+        ct = new ClientThread(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp, str, 8888);
         
-        for (int i=0;i<100000;i+=1)
+        for (int i=0;i<10000000;i+=1)
         {
             if (ct.Connected())
             {

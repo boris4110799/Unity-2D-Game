@@ -1,7 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-
 public class ServerData
 {
     public int id { get; set; }
@@ -25,16 +21,12 @@ public class ServerData
 public class ClientData
 {
     public int id { get; set; }
-    public float horizontal { get; set; }
-    public float vertical { get; set; }
     public string presskey { get; set; }
     public bool spawning { get; set; }
 
     public ClientData()
     {
         id = -1;
-        horizontal = 0;
-        vertical = 0;
         presskey = "None";
         spawning = false;
     }
