@@ -31,7 +31,7 @@ class ClientThread
         threadConnect.Start();
 
         receiveMessage = null;
-
+        
         threadReceive = new Thread(Receive)
         {
             IsBackground = true
@@ -43,10 +43,11 @@ class ClientThread
     {
         try
         {
-            clientSocket.Connect(IPAddress.Parse(internet.ip), internet.port);//等待連線，若未連線則會停在這行
+            clientSocket.Connect(IPAddress.Parse(internet.ip), internet.port); //等待連線，若未連線則會停在這行
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            throw ex;
         }
     }
 
@@ -54,7 +55,7 @@ class ClientThread
     {
         long dataLength;
         byte[] bytes = new byte[1024 * 4];
-
+        
         while (true)
         {
             if (clientSocket != null && clientSocket.Connected == true)
@@ -80,9 +81,9 @@ class ClientThread
                     clientSocket.Send(Encoding.UTF8.GetBytes(message));
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-
+                throw ex;
             }
         }
     }
@@ -100,9 +101,9 @@ class ClientThread
             clientSocket.Shutdown(SocketShutdown.Both);
             clientSocket.Close();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-
+            throw ex;
         }
     }
 }

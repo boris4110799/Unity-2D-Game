@@ -16,7 +16,6 @@ class ServerThread
     private Socket[] clientSocket;          //連線使用的Socket
     private Struct_Internet internet;
     private int SocketIndex = 0;            //紀錄Socket的編號
-    public bool[] status;                   //紀錄Socket的狀態
     public string receiveMessage = null;    //初始化接受的資料
     private Thread threadConnect = null;    //連線的Thread
 
@@ -30,7 +29,6 @@ class ServerThread
     public void Listen() //開始傾聽連線需求
     {
         Array.Resize(ref clientSocket, 1);  //動態增加Socket的數目
-        Array.Resize(ref status, 1);        //動態增加status的數目
 
         serverSocket.Bind(new IPEndPoint(IPAddress.Parse(internet.ip), internet.port)); //伺服器本身的IP和Port
         serverSocket.Listen(10);    //最多一次接受多少人連線
@@ -45,18 +43,13 @@ class ServerThread
         {
             if (clientSocket[i] != null) //serverSocket[i]若不為null表示已被實作過，判斷是否有Client端連線
             {
-                if (clientSocket[i].Connected == false) //如果目前第i個Socket若沒有人連線，便可提供給下一個Client進行連線
+                if (Connected(i) == false) //如果目前第i個Socket若沒有人連線，便可提供給下一個Client進行連線
                 {
-                    status[i] = false;
                     if (FlagFinded == false)
                     {
                         SocketIndex = i;
                         FlagFinded = true;
                     }
-                }
-                else
-                {
-                    status[i] = true;
                 }
             }
         }
@@ -66,7 +59,6 @@ class ServerThread
         {
             SocketIndex = clientSocket.Length;
             Array.Resize(ref clientSocket, SocketIndex + 1);
-            Array.Resize(ref status, SocketIndex + 1);
         }
 
         //建立Thread進行連線
@@ -83,8 +75,6 @@ class ServerThread
         {
             clientSocket[SocketIndex] = serverSocket.Accept(); //等到Client端連線成功後才會往下執行
             
-            status[SocketIndex] = true;
-
             int tempIndex = SocketIndex;
             SocketWaitAccept();
             long dataLength;                    //儲存傳遞過來的資料長度
@@ -93,22 +83,28 @@ class ServerThread
             while (true)
             {
                 //接收來自Client端傳來的資料
-                if (clientSocket[tempIndex] != null && clientSocket[tempIndex].Connected == true)
+                //if (clientSocket[tempIndex] != null && clientSocket[tempIndex].Connected == true)
+                if (Connected(tempIndex))
                 {
                     dataLength = clientSocket[tempIndex].Receive(bytes);    //資料接收完畢之前都會停在這邊
                     receiveMessage = Encoding.UTF8.GetString(bytes);        //將傳過來的資料解碼並儲存
                 }
                 else
                 {
-                    status[tempIndex] = false;
                     break;
                 }
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-
+            throw ex;
         }
+    }
+
+    public bool Connected(int ind)
+    {
+        if (clientSocket[ind] == null) return false;
+        else return !((clientSocket[ind].Poll(1000, SelectMode.SelectRead) && (clientSocket[ind].Available == 0)) || !clientSocket[ind].Connected);
     }
 
     public void StopConnect() //停止連線
@@ -117,12 +113,12 @@ class ServerThread
         {
             try
             {
-                clientSocket[i].Close();
-                status[i] = false;
+                if (Connected(i))
+                    clientSocket[i].Close();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-
+                throw ex;
             }
         }
     }
@@ -143,9 +139,9 @@ class ServerThread
                     clientSocket[id].Send(Encoding.UTF8.GetBytes(message)); //將資料進行編碼並轉為Byte後傳遞
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-
+                throw ex;
             }
         }
     }

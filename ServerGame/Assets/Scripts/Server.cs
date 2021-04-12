@@ -23,6 +23,7 @@ public class Server : MonoBehaviour
     public float minPosY;               //設定移動的下界
     public float maxPosY;               //設定移動的上界
 
+    private GameObject playerf;         //玩家變數
     private GameObject player;          //玩家變數
     private GameObject hpbar;           //血條變數
     private string ipaddress;           //儲存本機IP
@@ -54,7 +55,7 @@ public class Server : MonoBehaviour
             {
                 //尋找特定的玩家和血條
                 string playername = "player" + Convert.ToString(Cdata[i].id);
-                player = GameObject.Find(playername);
+                playerf = GameObject.Find(playername);
                 string hpname = "hpbar" + Convert.ToString(Cdata[i].id);
                 hpbar = GameObject.Find(hpname);
 
@@ -83,9 +84,34 @@ public class Server : MonoBehaviour
                 }
 
                 //更新玩家座標與血條位置
-                player.transform.position = new Vector2(Mathf.Clamp(player.transform.position.x + movementx, minPosX, maxPosX), Mathf.Clamp(player.transform.position.y + movementy, minPosY, maxPosY));
-                hpbar.transform.position = new Vector2(player.transform.position.x - 2, player.transform.position.y - 1.5f);
-                
+                playerf.transform.position = new Vector2(Mathf.Clamp(playerf.transform.position.x + movementx, minPosX, maxPosX), Mathf.Clamp(playerf.transform.position.y + movementy, minPosY, maxPosY));
+                hpbar.transform.position = new Vector2(playerf.transform.position.x - 2, playerf.transform.position.y - 1.5f);
+
+                //更新玩家旋轉方向
+                float z_angle = playerf.transform.rotation.eulerAngles.z;
+                if (Cdata[i].presskey == "LeftArrow")
+                {
+                    if (z_angle > 180) z_angle -= 360;
+                    if (z_angle + 90 >= 0) player.transform.Rotate(0, 0, (90 - z_angle) / 5);
+                    else player.transform.Rotate(0, 0, (-270 - z_angle) / 5);
+                }
+                else if (Cdata[i].presskey == "RightArrow")
+                {
+                    if (270 - z_angle <= 180) player.transform.Rotate(0, 0, (270 - z_angle) / 5);
+                    else player.transform.Rotate(0, 0, (-90 - z_angle) / 5);
+                }
+                else if (Cdata[i].presskey == "UpArrow")
+                {
+                    if (360 - z_angle <= 180) player.transform.Rotate(0, 0, (360 - z_angle) / 5);
+                    else player.transform.Rotate(0, 0, (0 - z_angle) / 5);
+                }
+                else if (Cdata[i].presskey == "DownArrow")
+                {
+                    if (180 - z_angle <= 180) player.transform.Rotate(0, 0, (180 - z_angle) / 5);
+                    else player.transform.Rotate(0, 0, (-180 - z_angle) / 5);
+                }
+                else player.transform.Rotate(0, 0, 0);
+
                 isMove[i] = false; //結束移動
             }
         }
@@ -122,59 +148,38 @@ public class Server : MonoBehaviour
 
                 isMove[id] = true; //設定該玩家為可移動狀態
 
-                //更新玩家旋轉方向
-                float z_angle = player.transform.rotation.eulerAngles.z;
-                if (Cdata[id].presskey == "LeftArrow")
-                {
-                    if (z_angle > 180) z_angle -= 360;
-                    if (z_angle + 90 >= 0) player.transform.Rotate(0, 0, (90 - z_angle) / 5);
-                    else player.transform.Rotate(0, 0, (-270 - z_angle) / 5);
-                }
-                else if (Cdata[id].presskey == "RightArrow")
-                {
-                    if (270 - z_angle <= 180) player.transform.Rotate(0, 0, (270 - z_angle) / 5);
-                    else player.transform.Rotate(0, 0, (-90 - z_angle) / 5);
-                }
-                else if (Cdata[id].presskey == "UpArrow")
-                {
-                    if (360 - z_angle <= 180) player.transform.Rotate(0, 0, (360 - z_angle) / 5);
-                    else player.transform.Rotate(0, 0, (0 - z_angle) / 5);
-                }
-                else if (Cdata[id].presskey == "DownArrow")
-                {
-                    if (180 - z_angle <= 180) player.transform.Rotate(0, 0, (180 - z_angle) / 5);
-                    else player.transform.Rotate(0, 0, (-180 - z_angle) / 5);
-                }
-                else player.transform.Rotate(0, 0, 0);
-
                 //發射子彈
                 if (Cdata[id].spawning)
                 {
-                    Instantiate(bulletPrefab, new Vector2(player.transform.position.x - Mathf.Sin(z_angle / 180 * Mathf.PI), player.transform.position.y + Mathf.Cos(z_angle / 180 * Mathf.PI)), player.transform.rotation);
+                    Instantiate(bulletPrefab, new Vector2(player.transform.position.x - Mathf.Sin(player.transform.rotation.eulerAngles.z / 180 * Mathf.PI), player.transform.position.y + Mathf.Cos(player.transform.rotation.eulerAngles.z / 180 * Mathf.PI)), player.transform.rotation);
                 }
             }
 
             st.receiveMessage = null; //清空訊息
         }
 
+        CheckPlayer();
+
         //發送訊息給所有玩家
         WriteMessage();
-        for (int i = 1; i < st.status.Length; i += 1)
+        //Debug.Log(msg);
+        for (int i = 1; i < 10; i += 1)
         {
-            if (st.status[i] == true && isplayercreate[i] == true)
+            if (isplayercreate[i] == true && st.Connected(i))
+            {
                 st.Send(i, Convert.ToString(i) + msg);
+            }
         }
 
-        CheckPlayer();
         CheckText();
     }
 
     private void WriteMessage() //編寫訊息
     {
         msg = null;
-        for (int i=1;i<st.status.Length; i+=1)
+        for (int i=1;i<10;i+=1)
         {
-            if (st.status[i] == true && isplayercreate[i] == true)
+            if (isplayercreate[i] == true && st.Connected(i))
             {
                 string playername = "player" + Convert.ToString(Cdata[i].id);
                 player = GameObject.Find(playername);
@@ -192,9 +197,9 @@ public class Server : MonoBehaviour
 
     private int CreatePlayer() //建構新玩家並給予編號
     {
-        for (int i=1;i<st.status.Length;i+=1)
+        for (int i=1;i<10;i+=1)
         {
-            if (st.status[i] = true && isplayercreate[i] == false)
+            if (st.Connected(i) == true && isplayercreate[i] == false)
             {
                 isplayercreate[i] = true;   //設定玩家為已建立
                 playerhp[i] = 100;          //設定玩家血量為100
@@ -217,12 +222,12 @@ public class Server : MonoBehaviour
 
     private void CheckPlayer() //檢查玩家是否已退出
     {
-        for (int i = 1; i < st.status.Length; i += 1)
+        for (int i = 1; i < 10; i += 1)
         {
-            if (st.status[i] == false && isplayercreate[i] == true)
+            if (isplayercreate[i] == true && st.Connected(i) == false)
             {
                 isplayercreate[i] = false; //設定玩家為已消失
-                
+
                 //移除特定的玩家和血條
                 string tempstr = "player" + Convert.ToString(i);
                 Destroy(GameObject.Find(tempstr));

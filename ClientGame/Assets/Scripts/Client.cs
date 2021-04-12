@@ -17,10 +17,12 @@ public class Client : MonoBehaviour
     public GameObject basicplayer;
     public GameObject bulletPrefab;  //子彈Prefab
     public GameObject hpbarPrefab;
-    private GameObject hpbar;
-    public Text text;
+    private GameObject mybar;
+    public Text pname;
 
     private GameObject player;
+    private GameObject playerf;
+    private GameObject hpbar;
     private bool[] isplayercreate = new bool[10];
     private bool[] isplayeralive = new bool[10];
     private bool connected = false;
@@ -40,8 +42,8 @@ public class Client : MonoBehaviour
         GameObject.Find("CM vcam1").GetComponent<CinemachineVirtualCamera>().Follow = myplayer.transform;
         basicplayer.SetActive(false);
 
-        hpbar = Instantiate(hpbarPrefab, new Vector2(myplayer.transform.position.x, myplayer.transform.position.y - 1.5f), Quaternion.identity) as GameObject;
-        hpbar.name = "hpbar" + Convert.ToString(0);
+        mybar = Instantiate(hpbarPrefab, new Vector2(myplayer.transform.position.x - 2, myplayer.transform.position.y - 1.5f), Quaternion.identity) as GameObject;
+        mybar.name = "hpbar" + Convert.ToString(0);
     }
 
     private void FixedUpdate()
@@ -53,16 +55,17 @@ public class Client : MonoBehaviour
                 if (isMove[i])
                 {
                     string playername = "player" + Convert.ToString(i);
-                    player = GameObject.Find(playername);
-                    
+                    playerf = GameObject.Find(playername);
+                    string hpname = "hpbar" + Convert.ToString(Sdata[i].id);
+                    hpbar = GameObject.Find(hpname);
 
-                    float lerpx = Mathf.Lerp(player.transform.position.x, Sdata[i].position_x, 0.2f);
-                    float lerpy = Mathf.Lerp(player.transform.position.y, Sdata[i].position_y, 0.2f);
-                    float lerpangle = Mathf.LerpAngle(player.transform.rotation.eulerAngles.z, Sdata[i].z_angle, 0.5f);
+                    float lerpx = Mathf.Lerp(playerf.transform.position.x, Sdata[i].position_x, 0.2f);
+                    float lerpy = Mathf.Lerp(playerf.transform.position.y, Sdata[i].position_y, 0.2f);
+                    float lerpangle = Mathf.LerpAngle(playerf.transform.rotation.eulerAngles.z, Sdata[i].z_angle, 0.5f);
 
-                    player.transform.position = new Vector2(lerpx, lerpy);
-                    player.transform.rotation = Quaternion.Euler(0, 0, lerpangle);
-                    hpbar.transform.position = new Vector2(player.transform.position.x, player.transform.position.y - 1.5f);
+                    playerf.transform.position = new Vector2(lerpx, lerpy);
+                    playerf.transform.rotation = Quaternion.Euler(0, 0, lerpangle);
+                    hpbar.transform.position = new Vector2(playerf.transform.position.x - 2, playerf.transform.position.y - 1.5f);
                     
                     isMove[i] = false;
                 }
@@ -79,13 +82,13 @@ public class Client : MonoBehaviour
                 //Debug.Log("Server:" + ct.receiveMessage);
                 string[] sArray = ct.receiveMessage.Split(new string[] { "{", "}" }, StringSplitOptions.RemoveEmptyEntries);
                 myid = Convert.ToInt32(sArray[0]);
-                Debug.Log("myid:" + Convert.ToString(myid));
                 isplayercreate[myid] = true;
 
                 if (myid != -1)
                 {
                     myplayer.name = "player" + Convert.ToString(myid);
-                    hpbar.name = "hpbar" + Convert.ToString(myid);
+                    mybar.name = "hpbar" + Convert.ToString(myid);
+                    pname.text = myplayer.name;
                 }
 
                 for (int i = 1; i < sArray.Length; i += 1)
@@ -106,25 +109,32 @@ public class Client : MonoBehaviour
                         player = Instantiate(basicplayer, new Vector2(Sdata[tempdata.id].position_x, Sdata[tempdata.id].position_y), Quaternion.Euler(0, 0, Sdata[tempdata.id].z_angle)) as GameObject;
                         player.name = "player" + Convert.ToString(tempdata.id);
                         basicplayer.SetActive(false);
+
+                        hpbar = Instantiate(hpbarPrefab, new Vector2(player.transform.position.x - 2, player.transform.position.y - 1.5f), Quaternion.identity) as GameObject;
+                        hpbar.name = "hpbar" + Convert.ToString(i);
                     }
 
                     isplayeralive[tempdata.id] = true;
                     isMove[tempdata.id] = true;
 
-                    if (tempdata.spawning)
+                    if (tempdata.spawning && tempdata.id != myid)
                     {
                         string playername = "player" + Convert.ToString(tempdata.id);
                         player = GameObject.Find(playername);
                         Instantiate(bulletPrefab, new Vector2(player.transform.position.x - Mathf.Sin(player.transform.rotation.eulerAngles.z / 180 * Mathf.PI), player.transform.position.y + Mathf.Cos(player.transform.rotation.eulerAngles.z / 180 * Mathf.PI)), player.transform.rotation);
                     }
 
-                    string hpname = "hpbar" + Convert.ToString(i);
+                    string hpname = "hpbar" + Convert.ToString(tempdata.id);
                     GameObject bar = GameObject.Find(hpname).transform.GetChild(0).gameObject;
-                    bar.transform.localScale = new Vector3(Sdata[i].hp / 100f, bar.transform.localScale.y, bar.transform.localScale.z);
+                    bar.transform.localScale = new Vector3(Sdata[tempdata.id].hp / 100f, bar.transform.localScale.y, bar.transform.localScale.z);
                 }
 
                 CheckPlayer();
                 ct.receiveMessage = null;
+            }
+            else
+            {
+                Debug.Log("null message");
             }
 
             if (isSpawn)
@@ -175,7 +185,7 @@ public class Client : MonoBehaviour
     {
         isSpawn = false;
         yield return new WaitForSeconds(interval);  //等候下一發子彈的時間
-        //Instantiate(bulletPrefab, new Vector2(myplayer.transform.position.x - Mathf.Sin(myplayer.transform.rotation.eulerAngles.z / 180 * Mathf.PI), myplayer.transform.position.y + Mathf.Cos(myplayer.transform.rotation.eulerAngles.z / 180 * Mathf.PI)), myplayer.transform.rotation);
+        Instantiate(bulletPrefab, new Vector2(myplayer.transform.position.x - Mathf.Sin(myplayer.transform.rotation.eulerAngles.z / 180 * Mathf.PI), myplayer.transform.position.y + Mathf.Cos(myplayer.transform.rotation.eulerAngles.z / 180 * Mathf.PI)), myplayer.transform.rotation);
         Spawning = true;
         isSpawn = true;
     }
@@ -217,7 +227,7 @@ public class Client : MonoBehaviour
     {
         ct = new ClientThread(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp, str, 8888);
         
-        for (int i=0;i<10000000;i+=1)
+        for (int i=0;i<10000000; i+=1)
         {
             if (ct.Connected())
             {
